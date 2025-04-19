@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,39 +38,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthRoute(!publicRoutes.includes(currentPath));
   }, []);
 
+  // Separate effect for initial session check
   useEffect(() => {
-    // Set up the auth state change listener first
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+          if (isAuthRoute) {
+            await fetchUserProfile(session.user.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking initial session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, [isAuthRoute]);
+
+  // Separate effect for auth state changes
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_OUT') {
           setUserRole(null);
           setUserProfile(null);
+          setLoading(false);
         } else if (session?.user && isAuthRoute) {
-          // Only fetch profile on authenticated routes
-          // Defer profile fetching to avoid Supabase deadlock
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-          }, 0);
+          await fetchUserProfile(session.user.id);
+        } else {
+          setLoading(false);
         }
       }
     );
-
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user && isAuthRoute) {
-        // Only fetch profile on authenticated routes
-        fetchUserProfile(session.user.id);
-      } else {
-        // If no session or on public route, set loading to false without fetching profile
-        setLoading(false);
-      }
-    });
 
     return () => {
       subscription.unsubscribe();
@@ -80,13 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchUserProfile(userId: string) {
     try {
-      // Only attempt to fetch profile if user is authenticated
+      setLoading(true);
+      
       if (!userId || !isAuthRoute) {
         setLoading(false);
         return;
       }
-      
-      console.log('Fetching user profile for:', userId);
       
       const { data, error } = await supabase
         .from('user_profiles')
@@ -103,20 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name: user.user_metadata.full_name || user.email?.split('@')[0],
             role: user.user_metadata.role || 'case_manager'
           };
-          console.log('Using fallback profile from metadata:', fallbackProfile);
           setUserRole(fallbackProfile.role);
           setUserProfile(fallbackProfile);
         }
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        console.log('User profile loaded successfully:', data);
+      } else if (data) {
         setUserRole(data.role);
         setUserProfile(data);
       } else {
-        console.log('No profile found for user ID:', userId);
         // Fall back to metadata
         if (user?.user_metadata) {
           const fallbackProfile = {
@@ -124,14 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name: user.user_metadata.full_name || user.email?.split('@')[0],
             role: user.user_metadata.role || 'case_manager'
           };
-          console.log('Using fallback profile from metadata:', fallbackProfile);
           setUserRole(fallbackProfile.role);
           setUserProfile(fallbackProfile);
         }
       }
-      setLoading(false);
     } catch (error) {
       console.error('Unexpected error fetching user profile:', error);
+    } finally {
       setLoading(false);
     }
   }

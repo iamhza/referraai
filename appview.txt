@@ -1,0 +1,342 @@
+App Overview:
+Build Referra, an intelligent referral platform that automates the matching of case managers with pre-vetted service providers. The platform eliminates manual searching, enhances provider visibility, and streamlines the referral process through a dynamic questionnaire. Case managers fill out a referral request form, and the Referra admin team matches providers based on the submitted criteria.
+
+
+Key features include a Landing Page, Sign-Up/Sign-In, Case Manager Dashboard, Admin Dashboard, Provider Dashboard/Profile, and a Referral Flow with an integrated Questionnaire. Providers have three subscription tiers:
+
+
+Basic (Free) – Limited visibility, no access to referrals.
+Pro (Paid) – Claimed profile with full access to referrals.
+Priority (Premium) – Higher-tier subscription, ensuring providers are prioritized and shown first in referral results.
+Once a case manager selects a provider, the referral process is triggered, allowing both parties to track and manage the referral flow with real-time status updates.
+
+
+Referral Flow Overview
+Referral Request Submission: Case managers submit a request through the built-in questionnaire.
+Matching Process: Referra’s admin team curates matching providers based on the case manager’s needs and sends the results back for review.
+Provider Selection: Case managers browse through the recommended providers and select the best fit for their client.
+Referral Flow Activation: The selected provider is notified, and the referral officially starts. Both case managers and providers can track the referral status through the platform.
+
+
+Questionnaire Case Manager: 
+
+🔹 Step 1: Service Request Basics
+✅ What service are you looking for? (Dropdown - List of Services)
+24-hour emergency assistance (waiver)
+Adult companion services
+Adult day services (ADS)
+Adult rehabilitative mental health services (ARMHS)
+Assisted living facility with dementia care
+Basic home care license
+Behavioral health home (BHH) services
+Case management (waiver)
+Certified community behavioral health clinic (CCBHC)
+Chore services (waiver)
+Community behavioral health hospital (CBHH)
+Comprehensive home care license
+Consumer directed community supports (CDCS) support planner
+Crisis respite
+Customized living services
+Day support services
+Dental clinic
+Employment services (waiver)
+Environmental accessibility adaptations (EAA) home assessment
+Environmental accessibility adaptations (EAA) home modification
+Environmental accessibility adaptations (EAA) vehicle modification
+Family residential services
+Family training
+Home delivered meals
+Homemaker services
+Home safety
+Housing stabilization services (HSS)
+Independent living skills therapy (waiver)
+Individual community living supports (ICLS)
+Individualized home supports (IHS) with family training
+Individualized home supports (IHS) without training
+Individualized home supports (IHS) with training
+Integrated community supports (ICS)
+Job training
+Medical equipment and supplies
+Night supervision
+Nursing home
+Nursing home out of state
+Nutrition services (waiver)
+Opioid treatment – non-residential
+Personal care assistant (PCA)
+Personal emergency response system (PERS)
+Positive support services
+Prevocational services
+Respite
+Specialist services
+Specialized equipment and supplies
+Supervised living facility
+Supportive housing
+Transitional services
+Transportation (waiver)
+Vocational rehabilitation (VR) community partner
+
+✅ Urgency of the request? (Radio button: Low, Medium, High)
+✅ What is the preferred start date? (Date Picker - Helps with scheduling)
+________________
+
+
+🔹 Step 2: Demographic & Client Needs
+(These fields help filter providers who can actually serve the referred person)
+✅ Age Group of the Client? (Multi-select)
+* Infant (0-2 years)
+* Child (3-12 years)
+* Teen (13-18 years)
+* Adult (19-64 years)
+* Senior (65+)
+✅ Gender Preferences for Provider? (Radio Button)
+* No Preference
+* Female Provider Preferred
+* Male Provider Preferred
+✅ Does the client require multilingual services? (Multi-select)
+* No preference
+* Somali
+* Hmong
+* Spanish
+* Arabic
+* Other: (Text Field)
+✅ Does the client require culturally specific services? (Checkbox)
+* African American-focused services
+* East African/Somali-focused services
+* Latino-focused services
+* Native American-focused services
+* Asian-focused services
+* Other: (Text Field)
+✅ Does the client have any accessibility needs? (Multi-select)
+* Wheelchair accessibility
+* Hearing impairment accommodations
+* Visual impairment accommodations
+* Cognitive disability support
+* Autism spectrum accommodations
+* No special accommodations needed
+✅ Does the client need transportation assistance? (Yes/No)
+________________
+
+
+🔹 Step 3: Provider Requirements
+(This helps filter providers who actually match well)
+✅ Preferred Provider Type? (Multi-select)
+* Small provider with personalized services
+* Large provider with multiple locations
+* Nonprofit provider
+* Faith-based provider
+✅ Does the client have insurance? (Multi-select)
+* Medicaid (MA)
+* Medicare
+* Private Insurance (Specify)
+* Self-Pay
+* Sliding Scale Needed
+✅ What days/times are best for service? (Multi-select)
+* Weekdays (9 AM - 5 PM)
+* Weekends
+* Evenings (5 PM - 10 PM)
+* Flexible
+✅ Does the client require emergency or after-hours services? (Yes/No)
+✅ Are there any additional preferences or details for the provider? (Free text field)
+________________
+
+
+🔹 Step 4: Contact & Follow-Up
+(Only if user is not signed in – to collect user info for follow-up)
+✅ Full Name
+✅ Email Address
+✅ Organization (if applicable)
+✅ Phone Number (optional but preferred)
+Upon submission, existing users are redirected to the dashboard.
+New users are prompted to confirm their email and log in to access their dashboard.
+Page Requirements:
+
+Landing Page
+Sign-In/Sign-Up
+Case Manager Dashboard
+Admin Dashboard
+Provider Profile/Dashboard
+
+
+
+
+Page Info:
+
+
+Case Manager Dashboard
+The Case Manager Dashboard is designed for managing referrals, tracking provider responses, and submitting new referral requests. It focuses on efficiency and a seamless workflow.
+
+
+Key Features:
+Active Referrals
+
+
+List of all ongoing referrals with statuses like:
+"Referral Sent"
+"Pending Provider Response"
+"In Progress"
+"Completed"
+View referral details, including selected providers and communication history.
+Ability to update referral status and add notes.
+New Referral Request (Quick Action)
+
+
+Launch the questionnaire to submit a new referral request.
+Referral History
+
+
+Track past referrals with filtering options (by date, status, service type).
+Notifications Panel
+
+
+Real-time updates on referral responses and changes in status.
+User Profile & Settings
+
+
+Manage personal information, organization details, and notification preferences.
+
+Admin Dashboard
+The Admin Dashboard provides operational control for matching providers to case manager referral requests, onboarding providers, and monitoring users and activity.
+
+
+Key Features:
+Referral Management
+
+
+View and manage all referrals submitted by case managers.
+Assign and match providers to referral requests.
+Update referral statuses and send notifications.
+Provider Management
+
+
+Approve, onboard, and manage provider profiles.
+Monitor subscription tiers (Basic, Pro, Priority).
+View and edit provider details.
+User Management
+
+
+Manage case manager accounts, including creation and deactivation.
+Monitor platform usage and compliance.
+Analytics & Reporting
+
+
+Real-time metrics on referrals (e.g., total referrals, most requested services, response rates).
+Generate reports for internal and external use.
+Notifications & Communication Center
+
+
+Send updates to case managers and providers.
+Resolve flagged issues and support requests.
+Settings
+
+
+Manage platform settings, including services offered and subscription pricing.
+Provider Profile/Dashboard
+The Provider Profile enables service providers to manage their information, subscription, and referrals. This profile is crucial for maintaining visibility and receiving referrals.
+
+
+Key Features:
+Profile Overview
+
+
+Provider name, address, and contact information.
+Service offered (selected from the comprehensive service list).
+Counties served.
+Description of the provider’s offerings and specialties.
+Subscription Management
+
+
+View current subscription tier (Basic, Pro, Priority).
+Upgrade to a higher tier for enhanced visibility and priority referrals.
+Referral Management
+
+
+View referrals received and their status.
+Accept or decline referral requests.
+Track referral progress and leave updates.
+
+
+Performance Metrics
+
+
+Number of referrals received.
+Average response time.
+Ratings and feedback from case managers (if applicable).
+
+
+Billing & Payments
+
+
+Manage subscription payments and view billing history.
+Notifications & Communication
+
+
+Receive real-time notifications for new referrals.
+Communicate securely with case managers through the platform
+
+
+
+Lovable Overview:
+
+Referra Project Overview for Cursor
+Project Concept
+Referra is a sophisticated social service referral platform designed to streamline the process of connecting case managers with service providers. The application focuses on simplifying and optimizing the referral matching process for social services.
+
+Core Modules
+Authentication
+
+Multi-role access system
+Support for Admin, Case Manager, and Provider roles
+Secure login and registration
+Referral Management
+
+Create and track referrals
+Intelligent matching of clients with appropriate service providers
+Real-time status updates and communication
+Provider Discovery
+
+Comprehensive database of service providers
+Advanced search and filtering capabilities
+Detailed provider profiles
+User Management
+
+Role-based access control
+Profile management
+Notification preferences
+Technical Architecture
+Frontend: React with TypeScript
+Styling: Tailwind CSS
+UI Components: Shadcn UI
+Backend: Supabase
+State Management: React Query
+Authentication: Native Supabase authentication
+Key Features
+AI-powered provider matching
+Secure, role-based access
+Efficient referral tracking
+Real-time messaging
+Comprehensive provider database
+Performance Optimizations
+Minimal profile loading
+Route-based authentication checks
+Efficient data fetching strategies
+Centralized authentication context
+Development Environment
+Designed for Cursor development
+Supports Node.js 18+
+Compatible with npm and bun
+Easy local and remote development setup
+Database Structure
+User Profiles
+Referrals
+Providers
+Services
+Messages
+Deployment Considerations
+Ready for Cursor deployment
+Supabase backend integration
+Scalable architecture
+Future Roadmap Potential
+Enhanced AI matching algorithms
+More granular role permissions
+Advanced reporting and analytics
+Expanded service provider integrations

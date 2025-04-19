@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/layouts/DashboardLayout';
@@ -105,8 +104,11 @@ const Referrals = () => {
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8 py-6 bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto space-y-6">
+          <div className="bg-red-500 text-white p-4 rounded-lg mb-4 text-center">
+            TEST BANNER - HAMZA - {new Date().toLocaleTimeString()}
+          </div>
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Referrals</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Referrals Dashboard</h1>
             <Button 
               className="bg-referra-500 hover:bg-referra-600"
               onClick={() => navigate('/new-referral')}

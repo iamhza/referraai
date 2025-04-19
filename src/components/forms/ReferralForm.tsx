@@ -1,20 +1,21 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Checkbox } from '../ui/checkbox';
+import { Calendar } from '../ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 import { CalendarIcon, ArrowRight, ArrowLeft } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '../ui/badge';
+import { useToast } from '../ui/use-toast';
+import { Textarea } from '../ui/textarea';
+import { DayPicker, DayClickEventHandler } from "react-day-picker";
+import { supabase } from '../../integrations/supabase/client';
 
 // List of all available services
 const AVAILABLE_SERVICES = [
@@ -72,36 +73,78 @@ const AVAILABLE_SERVICES = [
   "Vocational rehabilitation (VR) community partner"
 ];
 
+interface ClientInformation {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: Date | undefined;
+  sex: 'male' | 'female' | 'other';
+  pmiNumber: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  insuranceProvider: string;
+  insuranceId: string;
+  additionalNotes: string;
+  waiverType: 'CADI' | 'DD' | 'EW' | 'CAC' | 'BI' | '';
+  planType: 'CSSP' | 'CCP' | 'HFPCP' | '';
+  safetyInfo: {
+    hasHistoryOfViolence: boolean;
+    violenceNotes?: string;
+    isSexOffender: boolean;
+    sexOffenderNotes?: string;
+  };
+}
+
 interface ReferralFormProps {
   onComplete?: () => void;
 }
 
 const ReferralForm = ({ onComplete }: ReferralFormProps) => {
   const [step, setStep] = useState(1);
-  const [date, setDate] = useState<Date>();
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedUrgency, setSelectedUrgency] = useState<'low' | 'medium' | 'high'>('medium');
+  const [selectedCounties, setSelectedCounties] = useState<string[]>([]);
+  const [selectedServiceHours, setSelectedServiceHours] = useState<string[]>([]);
+  const [emergencyServicesNeeded, setEmergencyServicesNeeded] = useState<boolean>(false);
+  const [clientInfo, setClientInfo] = useState<ClientInformation>({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: undefined,
+    sex: 'male',
+    pmiNumber: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    insuranceProvider: "",
+    insuranceId: "",
+    additionalNotes: "",
+    waiverType: '',
+    planType: '',
+    safetyInfo: {
+      hasHistoryOfViolence: false,
+      violenceNotes: '',
+      isSexOffender: false,
+      sexOffenderNotes: ''
+    }
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const totalSteps = 3;
+  const totalSteps = 4;
   
   const nextStep = () => {
     if (step < totalSteps) {
       setStep(step + 1);
       window.scrollTo(0, 0);
-    } else {
-      toast({
-        title: "Referral Submitted Successfully",
-        description: "Your referral has been submitted and is being processed. You'll be redirected to provider matching.",
-      });
-      
-      // Generate a random referral ID for the demo
-      const referralId = Math.floor(Math.random() * 10000).toString();
-      
-      // Navigate to the matched-providers route with the referral ID
-      setTimeout(() => {
-        navigate(`/case-manager/matched-providers/${referralId}`);
-      }, 1500);
     }
   };
   
@@ -114,6 +157,199 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
   
   const handleServiceChange = (value: string) => {
     setSelectedService(value);
+  };
+
+  const handleUrgencyChange = (value: 'low' | 'medium' | 'high') => {
+    setSelectedUrgency(value);
+  };
+
+  const handleCountyChange = (value: string) => {
+    setSelectedCounties(prev => 
+      prev.includes(value) 
+        ? prev.filter(county => county !== value)
+        : [...prev, value]
+    );
+  };
+
+  const handleServiceHoursChange = (time: string, checked: boolean) => {
+    setSelectedServiceHours(prev => 
+      checked 
+        ? [...prev, time]
+        : prev.filter(t => t !== time)
+    );
+  };
+
+  const handleEmergencyServicesChange = (value: string) => {
+    setEmergencyServicesNeeded(value === 'yes');
+  };
+  
+  const validateForm = () => {
+    // Basic validation for required fields
+    if (!selectedService) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a service",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!date) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a preferred start date",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (selectedCounties.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one county",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!clientInfo.firstName || !clientInfo.lastName || !clientInfo.dateOfBirth || 
+        !clientInfo.pmiNumber || !clientInfo.address || !clientInfo.city || 
+        !clientInfo.state || !clientInfo.zipCode || !clientInfo.waiverType || 
+        !clientInfo.planType) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required client information fields",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+  
+  const handleSubmit = async (event: React.FormEvent) => {
+    if (event) {
+      event.preventDefault();
+    }
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      // Get the current user from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      console.log('Auth check:', { user, error: authError });
+      
+      if (authError || !user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to submit a referral. Please log in and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Prepare PHI data for MongoDB
+      const phiData = {
+        firstName: clientInfo.firstName,
+        middleName: clientInfo.middleName,
+        lastName: clientInfo.lastName,
+        dateOfBirth: clientInfo.dateOfBirth,
+        sex: clientInfo.sex,
+        pmiNumber: clientInfo.pmiNumber,
+        email: clientInfo.email,
+        phone: clientInfo.phone,
+        address: {
+          street: clientInfo.address,
+          city: clientInfo.city,
+          state: clientInfo.state,
+          zipCode: clientInfo.zipCode
+        },
+        insuranceProvider: clientInfo.insuranceProvider,
+        insuranceId: clientInfo.insuranceId,
+        safetyInfo: {
+          hasHistoryOfViolence: clientInfo.safetyInfo.hasHistoryOfViolence,
+          violenceNotes: clientInfo.safetyInfo.violenceNotes,
+          isSexOffender: clientInfo.safetyInfo.isSexOffender,
+          sexOffenderNotes: clientInfo.safetyInfo.sexOffenderNotes
+        },
+        medicalNotes: clientInfo.additionalNotes,
+        userId: user.id
+      };
+
+      console.log('Submitting PHI data to MongoDB...');
+      
+      // 1. Save PHI data to MongoDB
+      const phiResponse = await fetch('http://localhost:5001/api/phi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(phiData),
+      });
+
+      if (!phiResponse.ok) {
+        const errorData = await phiResponse.json();
+        throw new Error(errorData.error || 'Failed to store PHI data');
+      }
+
+      const { mongoPhiId } = await phiResponse.json();
+      console.log('PHI data stored with ID:', mongoPhiId);
+
+      // 2. Save non-PHI data to Supabase
+      const nonPhiData = {
+        case_manager_id: user.id,
+        mongo_id: mongoPhiId,
+        service_type: selectedService,
+        urgency: selectedUrgency.charAt(0).toUpperCase() + selectedUrgency.slice(1),
+        preferred_start_date: date,
+        counties: selectedCounties,
+        service_hours_preference: selectedServiceHours,
+        emergency_services_needed: emergencyServicesNeeded,
+        waiver_type: clientInfo.waiverType,
+        plan_type: clientInfo.planType,
+        status: 'pending',
+        additional_notes: clientInfo.additionalNotes
+      };
+
+      console.log('Submitting to Supabase with urgency:', selectedUrgency.charAt(0).toUpperCase() + selectedUrgency.slice(1));
+      console.log('Full nonPhiData:', nonPhiData);
+      
+      const { data: referralData, error: supabaseError } = await supabase
+        .from('referrals')
+        .insert(nonPhiData)
+        .select()
+        .single();
+
+      if (supabaseError) {
+        // If Supabase insert fails, we should ideally delete the PHI data from MongoDB
+        console.error('Failed to save to Supabase, should cleanup MongoDB:', mongoPhiId);
+        throw supabaseError;
+      }
+
+      console.log('Referral created successfully:', referralData);
+      
+      // Show success message
+      toast({
+        title: "Referral Submitted Successfully",
+        description: "Your referral has been created and is now visible in your dashboard.",
+      });
+
+      // Navigate back to the case manager's dashboard
+      setTimeout(() => {
+        navigate('/case-manager/referrals');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error submitting referral:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit referral. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   return (
@@ -166,7 +402,11 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
               
               <div className="space-y-2">
                 <Label>Urgency of the request?</Label>
-                <RadioGroup defaultValue="medium" className="flex gap-4">
+                <RadioGroup 
+                  value={selectedUrgency} 
+                  onValueChange={handleUrgencyChange} 
+                  className="flex gap-4"
+                >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="low" id="low" />
                     <Label htmlFor="low">Low</Label>
@@ -198,12 +438,11 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <DayPicker
                       mode="single"
                       selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
+                      onSelect={(day) => setDate(day)}
+                      disabled={(date) => date < new Date()}
                     />
                   </PopoverContent>
                 </Popover>
@@ -211,9 +450,9 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
               
               <div className="space-y-2">
                 <Label htmlFor="counties">Counties to be served</Label>
-                <Select>
+                <Select onValueChange={handleCountyChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select county" />
+                    <SelectValue placeholder="Select counties (can select multiple)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="hennepin">Hennepin</SelectItem>
@@ -223,6 +462,29 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
                     <SelectItem value="washington">Washington</SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedCounties.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedCounties.map((county) => (
+                      <Badge 
+                        key={county}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                        onClick={() => handleCountyChange(county)}
+                      >
+                        {county}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCountyChange(county);
+                          }}
+                          className="ml-1 hover:text-destructive"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -237,12 +499,310 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
           </div>
         )}
         
-        {/* Step 2: Provider Matching Preferences */}
+        {/* Step 2: Client Information */}
         {step === 2 && (
           <div className="animate-fade-in">
             <div className="mb-8">
               <div className="bg-referra-50 text-referra-700 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-2">
                 Step 2
+              </div>
+              <h3 className="text-lg font-semibold">Client Information</h3>
+              <p className="text-gray-500 mt-1">Enter client's personal and program details</p>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Personal Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-4">Personal Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name*</Label>
+                    <Input 
+                      id="firstName"
+                      value={clientInfo.firstName}
+                      onChange={(e) => setClientInfo({
+                        ...clientInfo,
+                        firstName: e.target.value
+                      })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="middleName">Middle Name</Label>
+                    <Input 
+                      id="middleName"
+                      value={clientInfo.middleName}
+                      onChange={(e) => setClientInfo({
+                        ...clientInfo,
+                        middleName: e.target.value
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name*</Label>
+                    <Input 
+                      id="lastName"
+                      value={clientInfo.lastName}
+                      onChange={(e) => setClientInfo({
+                        ...clientInfo,
+                        lastName: e.target.value
+                      })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Date of Birth and PMI */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date of Birth*</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !clientInfo.dateOfBirth && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {clientInfo.dateOfBirth ? format(clientInfo.dateOfBirth, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <DayPicker
+                        mode="single"
+                        selected={clientInfo.dateOfBirth}
+                        onSelect={(day) => setClientInfo({ ...clientInfo, dateOfBirth: day || undefined })}
+                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pmiNumber">PMI Number*</Label>
+                  <Input 
+                    id="pmiNumber"
+                    value={clientInfo.pmiNumber}
+                    onChange={(e) => setClientInfo({
+                      ...clientInfo,
+                      pmiNumber: e.target.value
+                    })}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Sex Selection */}
+              <div className="space-y-2">
+                <Label>Sex*</Label>
+                <RadioGroup 
+                  value={clientInfo.sex}
+                  onValueChange={(value: 'male' | 'female' | 'other') => 
+                    setClientInfo({
+                      ...clientInfo,
+                      sex: value
+                    })
+                  }
+                >
+                  <div className="flex gap-4">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="male" id="sex-male" />
+                      <Label htmlFor="sex-male">Male</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="female" id="sex-female" />
+                      <Label htmlFor="sex-female">Female</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="other" id="sex-other" />
+                      <Label htmlFor="sex-other">Other</Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Address */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-4">Address</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="street">Street Address*</Label>
+                    <Input 
+                      id="street"
+                      value={clientInfo.address}
+                      onChange={(e) => setClientInfo({
+                        ...clientInfo,
+                        address: e.target.value
+                      })}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City*</Label>
+                      <Input 
+                        id="city"
+                        value={clientInfo.city}
+                        onChange={(e) => setClientInfo({
+                          ...clientInfo,
+                          city: e.target.value
+                        })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State*</Label>
+                      <Input 
+                        id="state"
+                        value={clientInfo.state}
+                        onChange={(e) => setClientInfo({
+                          ...clientInfo,
+                          state: e.target.value
+                        })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zip">ZIP Code*</Label>
+                      <Input 
+                        id="zip"
+                        value={clientInfo.zipCode}
+                        onChange={(e) => setClientInfo({
+                          ...clientInfo,
+                          zipCode: e.target.value
+                        })}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Program Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-4">Program Information</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Waiver Type*</Label>
+                    <Select 
+                      value={clientInfo.waiverType}
+                      onValueChange={(value) => setClientInfo({
+                        ...clientInfo,
+                        waiverType: value as ClientInformation['waiverType']
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select waiver type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CADI">CADI - Community Access for Disability Inclusion</SelectItem>
+                        <SelectItem value="DD">DD - Developmental Disabilities</SelectItem>
+                        <SelectItem value="EW">EW - Elderly Waiver</SelectItem>
+                        <SelectItem value="CAC">CAC - Community Alternative Care</SelectItem>
+                        <SelectItem value="BI">BI - Brain Injury</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Person-Centered Plan Type*</Label>
+                    <Select 
+                      value={clientInfo.planType}
+                      onValueChange={(value) => setClientInfo({
+                        ...clientInfo,
+                        planType: value as ClientInformation['planType']
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select plan type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CSSP">CSSP - Community Support Services Plan</SelectItem>
+                        <SelectItem value="CCP">CCP - Coordinated Care Plan</SelectItem>
+                        <SelectItem value="HFPCP">HFPCP - Health and Family-Centered Care Plan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Safety Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-4">Safety Information</h4>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="historyOfViolence"
+                        checked={clientInfo.safetyInfo.hasHistoryOfViolence}
+                        onCheckedChange={(checked) => setClientInfo({
+                          ...clientInfo,
+                          safetyInfo: {
+                            ...clientInfo.safetyInfo,
+                            hasHistoryOfViolence: checked as boolean
+                          }
+                        })}
+                      />
+                      <Label htmlFor="historyOfViolence">History of Violence</Label>
+                    </div>
+                    {clientInfo.safetyInfo.hasHistoryOfViolence && (
+                      <Textarea 
+                        placeholder="Please provide details..."
+                        value={clientInfo.safetyInfo.violenceNotes}
+                        onChange={(e) => setClientInfo({
+                          ...clientInfo,
+                          safetyInfo: {
+                            ...clientInfo.safetyInfo,
+                            violenceNotes: e.target.value
+                          }
+                        })}
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="sexOffender"
+                        checked={clientInfo.safetyInfo.isSexOffender}
+                        onCheckedChange={(checked) => setClientInfo({
+                          ...clientInfo,
+                          safetyInfo: {
+                            ...clientInfo.safetyInfo,
+                            isSexOffender: checked as boolean
+                          }
+                        })}
+                      />
+                      <Label htmlFor="sexOffender">Registered Sex Offender</Label>
+                    </div>
+                    {clientInfo.safetyInfo.isSexOffender && (
+                      <Textarea 
+                        placeholder="Please provide registry information..."
+                        value={clientInfo.safetyInfo.sexOffenderNotes}
+                        onChange={(e) => setClientInfo({
+                          ...clientInfo,
+                          safetyInfo: {
+                            ...clientInfo.safetyInfo,
+                            sexOffenderNotes: e.target.value
+                          }
+                        })}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Step 3: Provider Matching Preferences */}
+        {step === 3 && (
+          <div className="animate-fade-in">
+            <div className="mb-8">
+              <div className="bg-referra-50 text-referra-700 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-2">
+                Step 3
               </div>
               <h3 className="text-lg font-semibold">Provider Matching Preferences</h3>
               <p className="text-gray-500 mt-1">Help us find the right providers</p>
@@ -310,34 +870,39 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
               </div>
               
               <div className="space-y-2">
-                <Label>Best Days/Times for Service</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                <p className="font-medium">Best Days/Times for Service</p>
+                <div className="flex flex-wrap gap-4">
                   {['Weekdays', 'Evenings', 'Weekends', 'Flexible'].map((time) => (
-                    <div key={time} className="flex items-center space-x-2">
-                      <Checkbox id={`time-${time.toLowerCase()}`} defaultChecked={time === 'Flexible'} />
-                      <label
-                        htmlFor={`time-${time.toLowerCase()}`}
-                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {time}
-                      </label>
-                    </div>
+                    <label key={time} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedServiceHours.includes(time)}
+                        onChange={(e) => handleServiceHoursChange(time, e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{time}</span>
+                    </label>
                   ))}
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label>Emergency or After-Hours Services Needed?</Label>
-                <RadioGroup defaultValue="no" className="flex gap-4">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="emergency-yes" />
-                    <Label htmlFor="emergency-yes">Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="emergency-no" />
-                    <Label htmlFor="emergency-no">No</Label>
-                  </div>
-                </RadioGroup>
+                <p className="font-medium">Emergency or After-Hours Services Needed?</p>
+                <div className="flex gap-4">
+                  {['yes', 'no'].map((value) => (
+                    <label key={value} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="emergency-services"
+                        value={value}
+                        checked={value === 'yes' ? emergencyServicesNeeded : !emergencyServicesNeeded}
+                        onChange={(e) => handleEmergencyServicesChange(e.target.value)}
+                        className="border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="capitalize">{value}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               
               <div className="p-4 rounded-lg bg-referra-50 border border-referra-200">
@@ -380,12 +945,12 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
           </div>
         )}
         
-        {/* Step 3: Contact & Follow-Up */}
-        {step === 3 && (
+        {/* Step 4: Contact & Follow-Up */}
+        {step === 4 && (
           <div className="animate-fade-in">
             <div className="mb-8">
               <div className="bg-referra-50 text-referra-700 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-2">
-                Step 3
+                Step 4
               </div>
               <h3 className="text-lg font-semibold">Contact & Follow-Up</h3>
               <p className="text-gray-500 mt-1">Your information for provider communications</p>
@@ -469,7 +1034,7 @@ const ReferralForm = ({ onComplete }: ReferralFormProps) => {
           </Button>
           <Button
             type="button"
-            onClick={nextStep}
+            onClick={step === totalSteps ? handleSubmit : nextStep}
           >
             {step === totalSteps ? 'Submit Referral' : 'Next'}
             {step !== totalSteps && <ArrowRight className="h-4 w-4 ml-2" />}
